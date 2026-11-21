@@ -68,18 +68,22 @@ android {
 }
 
 // Current Play Services artifacts carry Kotlin 2.3 module metadata, which
-// compilers older than 2.0 refuse to read. We only use their Java APIs, so the
-// check is skipped for this module's sources on such compilers (consumer apps
-// on older Flutter templates, e.g. Kotlin 1.8). It does not affect the app.
-val kotlinPluginMajorVersion =
-    org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion(logger).substringBefore('.').toIntOrNull() ?: 2
+// compilers older than 2.2 refuse to read (a compiler reads at most one minor
+// version ahead). We only use their Java APIs, so the check is skipped for this
+// module's sources on such compilers (consumer apps on older Flutter templates,
+// e.g. Kotlin 1.8 or 2.1). It does not affect the app.
+val skipKotlinMetadataCheck: Boolean = run {
+    val version = org.jetbrains.kotlin.gradle.plugin.getKotlinPluginVersion(logger)
+    val (major, minor) = version.split('.').map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 } + listOf(0, 0)
+    major < 2 || (major == 2 && minor < 2)
+}
 
 // Task-based instead of the `kotlin {}` extension: that extension only exists
 // when a Kotlin plugin is applied in this script's `plugins {}` block, which is
 // not the case on either AGP 8 or AGP 9 here.
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    if (kotlinPluginMajorVersion < 2) {
+    if (skipKotlinMetadataCheck) {
         compilerOptions.freeCompilerArgs.add("-Xskip-metadata-version-check")
     }
 }
