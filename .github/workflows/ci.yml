@@ -93,6 +93,9 @@ jobs:
           flutter create --platforms=android --org com.example consumer
           cd consumer
           flutter pub add sms_consent_kit --path ../sms_consent_kit
+          # The package requires minSdk 24 (doc/INTEGRATION.md); older templates default to 21.
+          sed -E -i 's/minSdk(Version)? *=? *flutter\.minSdkVersion/minSdk = 24/' android/app/build.gradle*
+          grep -n "minSdk" android/app/build.gradle*
           cat > lib/main.dart <<'DART'
           import 'package:flutter/widgets.dart';
           // ignore: unused_import
