@@ -1,0 +1,7 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      No permissions needed: the SMS User Consent API does not require
+      READ_SMS / RECEIVE_SMS. The BroadcastReceiver is registered at runtime,
+      only for the lifetime of a session (doc/ARCHITECTURE.md §4).
+    -->
+</manifest>

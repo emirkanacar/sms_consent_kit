@@ -1,0 +1,38 @@
+name: sms_consent_kit
+description: >-
+  Session-based, lifecycle-aware and secure Android SMS User Consent API
+  plugin for one-time code (OTP) autofill.
+version: 0.1.0-dev.1
+repository: https://github.com/emirkanacar/sms_consent_kit
+issue_tracker: https://github.com/emirkanacar/sms_consent_kit/issues
+documentation: https://github.com/emirkanacar/sms_consent_kit/tree/main/doc
+topics:
+  - sms
+  - otp
+  - autofill
+  - android
+  - authentication
+
+environment:
+  # The exact lower bound will be set from the CI compat job (doc/PLAN.md, phase 0).
+  sdk: ^3.6.0
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Required by the Pigeon-generated code.
+  meta: ^1.15.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  pigeon: ^29.2.0
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.emirkanacar.sms_consent_kit
+        pluginClass: SmsConsentPlugin

@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dart:
+    name: Format · Analyze · Test · Pigeon
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: (cd example && flutter pub get)
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed .
+      - name: Analyze (package)
+        run: flutter analyze
+      - name: Analyze (example)
+        run: (cd example && flutter analyze)
+      - name: Test (package)
+        run: flutter test
+      - name: Test (example)
+        run: (cd example && flutter test)
+      - name: Pigeon output is up to date
+        run: |
+          tool/generate_pigeon.sh
+          git diff --exit-code -- lib/src/transport android/src/main/kotlin
+      - name: Pub publish dry run
+        run: dart pub publish --dry-run
+
+  android:
+    name: Android (release APK + Kotlin tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Release APK (R8 enabled)
+        working-directory: example
+        run: flutter build apk --release
+      - name: Kotlin unit tests
+        working-directory: example/android
+        run: ./gradlew :sms_consent_kit:testDebugUnitTest
+
+  # Compatibility with older Flutter / AGP / Kotlin versions. A consumer app
+  # created from that Flutter version's own template depends on the package
+  # by path. Non-blocking until the exact lower bound is known
+  # (doc/PLAN.md, phase 0).
+  compat:
+    name: Compat · Flutter ${{ matrix.flutter }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.flutter != 'stable' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        flutter: ['3.27.x', '3.32.x', '3.38.x', 'stable']
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: sms_consent_kit
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ matrix.flutter != 'stable' && matrix.flutter || '' }}
+          channel: stable
+          cache: true
+      - name: Create consumer app
+        run: |
+          flutter --version
+          flutter create --platforms=android --org com.example consumer
+          cd consumer
+          flutter pub add sms_consent_kit --path ../sms_consent_kit
+          cat > lib/main.dart <<'DART'
+          import 'package:flutter/widgets.dart';
+          // ignore: unused_import
+          import 'package:sms_consent_kit/sms_consent_kit.dart';
+
+          void main() => runApp(const SizedBox());
+          DART
+      - name: Android release build
+        working-directory: consumer
+        run: flutter build apk --release
