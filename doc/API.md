@@ -158,6 +158,7 @@ final class SmsConsentSupport {
 |---|---|
 | `startFailed` | The `startSmsUserConsent` task failed |
 | `intentRejected` | The consent intent failed security validation |
-| `noActivity` | No Activity to show the consent sheet |
+| `noActivity` | No Activity to show the consent sheet (also: the Activity was destroyed while the sheet was open and no result arrived within 60 s) |
+| `launchFailed` | Launching the consent sheet threw (e.g. `ActivityNotFoundException`) |
 | `sessionAlreadyActive` | Second call while `ConflictPolicy.reject` is set |
 | `internal` | Unexpected native error |

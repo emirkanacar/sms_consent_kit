@@ -1,25 +1,21 @@
 package com.emirkanacar.sms_consent_kit
 
 import kotlinx.coroutines.test.runTest
-import kotlin.test.Test
+import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-/*
- * Run from example/android:
- *   ./gradlew :sms_consent_kit:testDebugUnitTest
- */
 internal class SmsConsentPluginTest {
     @Test
-    fun checkSupport_isNotImplementedYet() = runTest {
+    fun hostApiCallsBeforeAttach_failWithInternal() = runTest {
         val error = assertFailsWith<SmsConsentFlutterError> {
             SmsConsentPlugin().checkSupport()
         }
-        assertEquals("unimplemented", error.code)
+        assertEquals(ErrorCodes.INTERNAL, error.code)
     }
 
     @Test
-    fun cancelAndReset_areSafeWithoutSession() {
+    fun cancelAndReset_areSafeWithoutEngine() {
         val plugin = SmsConsentPlugin()
         plugin.cancel(42)
         plugin.reset()

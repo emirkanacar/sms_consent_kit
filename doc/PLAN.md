@@ -34,7 +34,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 - `pigeon/messages.dart` + `tool/generate_pigeon.sh`, generated code committed
 - Android dependencies (lower bounds: `play-services-auth-api-phone` 18.3.1, `play-services-base` 18.11.1, `androidx.core` 1.13.1, `kotlinx-coroutines-android` 1.8.1)
 - **Acceptance:** CI green; the example app's release APK builds; the Flutter lower bound is set from the `compat` job.
-- **Status:** Done locally (format, analyze, tests, Kotlin tests, release APK, pub dry-run). Waiting for the first CI run and the `compat` results.
+- **Status:** Done. The first CI run found two issues, both fixed: the committed `GeneratedPluginRegistrant.java` made pub dry-run warn (now ignored), and R4 occurred (fixed).
 
 ### Phase 1 — Kotlin core
 - `SmsConsentPlugin` (FlutterPlugin, ActivityAware, ActivityResultListener, `SmsConsentHostApi` implementation)
@@ -43,6 +43,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 - `ConsentIntentGuard`
 - Robolectric tests
 - **Acceptance:** EC-01, 03, 04, 06, 12, 14, 15 covered by Kotlin tests.
+- **Status:** Done locally: 54 Kotlin tests (engine with fakes and virtual time, Robolectric for receiver/guard), release APK, analyze. Waiting for CI `compat`.
 
 ### Phase 2 — Pigeon bridge + Dart core
 - `PigeonTransport` on top of the generated code
@@ -89,7 +90,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 | R1 | Undocumented Play Services behavior (consecutive `start` calls, the 5-minute limit) | Medium | Verify with device tests, update EDGE_CASES. |
 | R2 | OEM-specific background Activity restrictions (Xiaomi, Samsung) | Medium | `deferUntilResumed` never tries to launch from the background. |
 | R3 | `minSdk` / AGP / Kotlin version mismatches in consumer projects | Low | Wide version range, min/max matrix in CI. |
-| R4 | The plugin relies on AGP 9's built-in Kotlin support (no `kotlin-android` plugin applied); consumer apps on AGP 8 may fail to compile the Kotlin sources | Medium | The CI `compat` job builds consumer apps from older Flutter templates. If it fails, apply the Kotlin plugin conditionally. |
+| R4 | The plugin relies on AGP 9's built-in Kotlin support (no `kotlin-android` plugin applied); consumer apps on AGP 8 may fail to compile the Kotlin sources | Medium | The CI `compat` job builds consumer apps from older Flutter templates. **Occurred** in the first CI run; fixed by applying `kotlin-android` only on AGP < 9 and setting `jvmTarget` via `KotlinCompile` tasks. |
 
 ## 6. Decisions made
 

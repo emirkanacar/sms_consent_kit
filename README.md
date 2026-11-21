@@ -4,7 +4,7 @@ A session-based, secure and lifecycle-aware Flutter plugin for the Android **SMS
 
 [![CI](https://github.com/emirkanacar/sms_consent_kit/actions/workflows/ci.yml/badge.svg)](https://github.com/emirkanacar/sms_consent_kit/actions/workflows/ci.yml)
 
-> Status: **Phase 0 (skeleton).** There is no public API yet. The design lives in `doc/`; progress follows the phases in `doc/PLAN.md`.
+> Status: **Phase 1 (Kotlin core).** There is no public Dart API yet. The design lives in `doc/`; progress follows the phases in `doc/PLAN.md`.
 
 ## Why another package?
 

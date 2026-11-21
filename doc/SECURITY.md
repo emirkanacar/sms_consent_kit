@@ -18,7 +18,7 @@
 | T6 | The receiver staying registered longer than needed (attack surface) | Registered only for the duration of a session. |
 | T7 | Accidentally consuming another plugin's `onActivityResult` | Plugin-specific `REQUEST_CODE`; returns `false` for results that do not match. |
 
-## 3. `ConsentIntentGuard` (draft)
+## 3. `ConsentIntentGuard`
 
 ```kotlin
 internal object ConsentIntentGuard {
@@ -29,16 +29,19 @@ internal object ConsentIntentGuard {
         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
         Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
 
-    fun validate(intent: Intent, pm: PackageManager): Boolean {
-        val component = intent.resolveActivity(pm) ?: return false
-        if (component.packageName != GMS) return false
+    fun isSafe(intent: Intent, pm: PackageManager): Boolean {
         if (intent.flags and FORBIDDEN_FLAGS != 0) return false
-        return true
+        // A selector replaces the intent during resolution.
+        if (intent.selector != null) return false
+        val component = intent.resolveActivity(pm) ?: return false
+        return component.packageName == GMS
     }
 }
 ```
 
-Note: Android 11+ package visibility rules apply to `resolveActivity`. Whether a `<queries>` entry for `com.google.android.gms` is needed in the manifest will be verified during implementation. If it is, it goes into the plugin manifest; app developers do not need to do anything.
+Android 11+ package visibility rules apply to `resolveActivity`, so the plugin manifest declares `<queries><package android:name="com.google.android.gms"/></queries>`. It is merged into the app manifest; app developers do not need to do anything.
+
+The GMS package itself is trusted because `GoogleApiAvailability` verifies its signature before a session starts, and `SmsRetriever.SEND_PERMISSION` (required to send the broadcast) is a signature permission of Play Services.
 
 ## 4. Recommendations for app developers
 

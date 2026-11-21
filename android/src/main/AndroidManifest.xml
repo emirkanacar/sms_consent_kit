@@ -4,4 +4,14 @@
       READ_SMS / RECEIVE_SMS. The BroadcastReceiver is registered at runtime,
       only for the lifetime of a session (doc/ARCHITECTURE.md §4).
     -->
+
+    <!--
+      Android 11+ package visibility: ConsentIntentGuard resolves the consent
+      intent and checks that it points to Play Services. Without this entry
+      resolveActivity() would return null and every intent would be rejected.
+      Merged into the app manifest; apps do not need to add anything.
+    -->
+    <queries>
+        <package android:name="com.google.android.gms" />
+    </queries>
 </manifest>

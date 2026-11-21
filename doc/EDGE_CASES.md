@@ -16,7 +16,9 @@ Each entry: **Scenario → Risk → Solution → Test.** The codes (`EC-xx`) are
   2. Even if a broadcast arrives, the consent intent is **not launched** without an active session token.
   3. `SmsConsentScope` dispose / route hidden → automatic cancel.
   4. Recommend a shorter timeout than the default (e.g. 2 minutes).
-- **Test:** Widget test (scope dispose → Cancelled), device test M-01.
+  5. Each registration gets a fresh receiver instance that is deactivated before `unregisterReceiver`, so a broadcast already queued for it never reaches a later session.
+  6. A `Status.TIMEOUT` broadcast is ignored: it cannot be attributed to a session (it may belong to an earlier `start`). The session's own timer (clamped to ≤ 5 min) produces `TimedOut`.
+- **Test:** Kotlin: `SmsConsentEngineTest.ec01_*`, `ConsentReceiverTest.ec01_*`; widget test (scope dispose → Cancelled); device test M-01.
 
 ### EC-02 — The broadcast of an old `start` call lands in a new session
 - **Scenario:** Screen A listens and is cancelled; screen B starts a new session; the SMS sent for A arrives and the sheet opens on B.
@@ -30,10 +32,12 @@ Each entry: **Scenario → Risk → Solution → Test.** The codes (`EC-xx`) are
   - `deferUntilResumed(maxDelay)` (default 30 s): the intent is kept in memory and shown on `onResume` if the session is still active and the delay has not passed; otherwise it is dropped → `TimedOut`.
   - `cancelOnBackground()`: `Cancelled(backgrounded)` when the app goes to the background.
 - Note: The app also goes to the background when the user switches to the SMS app to read the message, which is why `defer` is the default.
+- "Background" means `ON_STOP` (not `ON_PAUSE`, which also fires for dialogs and multi-window), excluding configuration changes. The consent sheet itself stopping our Activity is not treated as background.
 
 ### EC-04 — Configuration change while the consent sheet is open (rotation, dark mode, locale)
 - **Risk:** The Activity is recreated, the result listener is lost, the `Future` hangs.
-- **Solution:** `onDetachedFromActivityForConfigChanges` → the session is kept; `onReattachedToActivityForConfigChanges` → the result listener is re-added. State lives in the engine object, not in the Activity.
+- **Solution:** `onDetachedFromActivityForConfigChanges` → the session is kept; `onReattachedToActivityForConfigChanges` → the result listener is re-added. State lives in the engine object, not in the Activity. A broadcast arriving between detach and reattach is deferred and shown on the new Activity.
+- **Real destroy while the sheet is open** (not a config change): the result can no longer be delivered. The session waits 60 s for a new Activity, then ends with `Failed(noActivity)`.
 
 ### EC-05 — Process death (the system kills the app while the sheet is open)
 - **Risk:** The result arrives on return, but nothing is waiting for it on the Dart side.
@@ -44,7 +48,7 @@ Each entry: **Scenario → Risk → Solution → Test.** The codes (`EC-xx`) are
 - **Solution:** `SmsConsent.instance` calls `reset()` on first access (native sessions are cleared). The Dart side ignores events with an unknown session id. If the `SmsConsentFlutterApi` call fails, the native session is terminated.
 
 ### EC-07 — No Activity (background isolate, detached engine in add-to-app)
-- **Solution:** `start` immediately returns `Failed(noActivity)`, or stays `deferred` until an Activity attaches (depending on policy). A call from a background isolate → `Failed(noActivity)`, not `Unsupported(platform)`.
+- **Solution:** With `cancelOnBackground`, `start` immediately returns `Failed(noActivity)` (and an active session ends with `Cancelled` when the Activity goes away); with `deferUntilResumed`, the sheet stays deferred until an Activity attaches. A call from a background isolate → `Failed(noActivity)`, not `Unsupported(platform)`.
 
 ### EC-08 — Multiple FlutterEngines / add-to-app
 - **Solution:** State is per engine. Each engine manages its own receiver; events go only to the engine that started the session.
