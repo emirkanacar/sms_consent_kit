@@ -46,7 +46,8 @@ The GMS package itself is trusted because `GoogleApiAvailability` verifies its s
 ## 4. Recommendations for app developers
 
 - Always verify the OTP **on the server**; a code coming from the client is not a source of trust on its own.
-- Do not send `SmsConsentReceived.message` to analytics or logging services.
+- Do not send `SmsConsentReceived.message` or `code` to analytics or logging services. `toString()` masks both.
+- If an `OtpExtractor` throws, only its type and the error type are reported to `FlutterError.onError`; the message is not.
 - Blocking screenshots on the OTP screen (`FLAG_SECURE`) is the app's decision; the package does not touch it.
 
 ## 5. Reporting vulnerabilities

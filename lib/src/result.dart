@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 ///
 /// ```dart
 /// switch (await session.result) {
-///   case SmsConsentReceived(:final message):
+///   case SmsConsentReceived(:final code, :final message):
 ///     // ...
 ///   case SmsConsentDenied():
 ///   case SmsConsentTimedOut():
@@ -23,22 +23,29 @@ sealed class SmsConsentResult {
 /// The user allowed the app to read the SMS.
 final class SmsConsentReceived extends SmsConsentResult {
   /// Creates a received result.
-  const SmsConsentReceived(this.message);
+  const SmsConsentReceived(this.message, {this.code});
 
   /// Full SMS body. Treat it as sensitive and do not log it.
   final String message;
 
-  @override
-  bool operator ==(Object other) =>
-      other is SmsConsentReceived && other.message == message;
+  /// The code found by the session's `OtpExtractor`; `null` if it found
+  /// none. [message] is always available as a fallback.
+  final String? code;
 
   @override
-  int get hashCode => Object.hash(SmsConsentReceived, message);
+  bool operator ==(Object other) =>
+      other is SmsConsentReceived &&
+      other.message == message &&
+      other.code == code;
+
+  @override
+  int get hashCode => Object.hash(SmsConsentReceived, message, code);
 
   /// Masked, so the SMS content does not end up in logs by accident (EC-28).
   @override
-  String toString() =>
-      'SmsConsentReceived(message: <redacted, ${message.length} chars>)';
+  String toString() => 'SmsConsentReceived(message: '
+      '<redacted, ${message.length} chars>, '
+      'code: ${code == null ? 'none' : '<redacted>'})';
 }
 
 /// The user tapped "Deny" on the consent sheet (EC-24).

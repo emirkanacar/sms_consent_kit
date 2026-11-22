@@ -2,7 +2,7 @@
 
 > Draft. Names may change during implementation; changes are reflected in this document.
 >
-> **Implemented (phase 2):** `SmsConsent`, `SmsConsentSession`, the result types, `SmsConsentOptions`, the support check and the error codes. Marked *phase 3*: `OtpExtractor`, `SmsConsentReceived.code` and `SmsConsentScope`.
+> **Implemented:** everything below (phases 2 and 3).
 
 ## 1. `SmsConsent`
 
@@ -18,7 +18,7 @@ final class SmsConsent {
   Future<SmsConsentResult> requestCode({
     String? senderPhoneNumber,
     Duration timeout = maxSmsConsentTimeout,      // 5 minutes
-    OtpExtractor extractor = const OtpExtractor.auto(), // phase 3
+    OtpExtractor extractor = const OtpExtractor.auto(),
     SmsConsentOptions options = const SmsConsentOptions(),
   });
 
@@ -64,7 +64,7 @@ sealed class SmsConsentResult { const SmsConsentResult(); }
 
 final class SmsConsentReceived extends SmsConsentResult {
   final String message;   // SMS body
-  final String? code;     // phase 3: extractor output; null if not found
+  final String? code;     // extractor output; null if not found
 }
 final class SmsConsentDenied     extends SmsConsentResult {}
 final class SmsConsentTimedOut   extends SmsConsentResult {}
@@ -125,9 +125,16 @@ abstract class OtpExtractor {
 ```
 
 Rules of `auto()`:
-1. Find every 4–8 digit number sequence in the message.
-2. Drop money and date formats (`1,250.00`, `1.250,00`, `12/11/2026`, numbers next to currency symbols or codes).
-3. Pick the one closest to a keyword; otherwise the first one.
+1. Find every standalone 4–8 digit number: not touching letters or other digits (`ABC12345` is not a candidate; `G-482913` is).
+2. Drop amounts, dates, times and grouped numbers: digit groups joined by `.` `,` `:` `/` `-` form one token and are dropped as a whole (`1,250.00`, `12/11/2026`, `12:30`, `555-0100`). Also drop numbers next to a currency symbol or code (`$`, `€`, `₺`, `TL`, `USD`, `Rs.` …), after `+` or `#`, or before `%`.
+3. Pick the one closest to a keyword (`OtpExtractor.defaultKeywords`); on a tie, the earlier one. Without a keyword in the message, the first one.
+
+- `digits(length: n)` applies the same rules with exactly `n` digits.
+- `keyword(...)` returns `null` if the message contains none of the keywords.
+- Keywords match case-insensitively at the start of a word: `kod` matches `kodunuz`, `pin` does not match `shipping`.
+- The digit-based strategies read Arabic-Indic, Persian, Devanagari and full-width digits and return ASCII digits.
+- `regex` returns `null` if the pattern does not match or the group is out of range.
+- A custom extractor extends `OtpExtractor`. If `extract` throws, `code` is `null`, the message is still delivered, and the error is reported to `FlutterError.onError` without the message.
 
 Default keywords are English. Apps that send SMS in other languages pass their own list to `OtpExtractor.keyword` (e.g. `['kod', 'şifre']` for Turkish).
 
@@ -140,17 +147,21 @@ SmsConsentScope({
   ValueChanged<SmsConsentResult>? onResult,
   String? senderPhoneNumber,
   OtpExtractor extractor = const OtpExtractor.auto(),
-  Duration timeout = const Duration(minutes: 5),
+  Duration timeout = maxSmsConsentTimeout,
+  SmsConsentOptions options = const SmsConsentOptions(),
   bool cancelWhenRouteHidden = true,
   bool enabled = true,
 });
 ```
 
 Behavior:
-- `initState` → start a session (if `enabled`).
+- Mount → start a session (if `enabled`). A scope mounted under another route (e.g. restored routes) starts when its route becomes visible.
+- `onCode` is called only when the extractor found a code; `onResult` gets every result of the scope's current session, after `onCode`. Neither is called after dispose.
 - `dispose` → `Cancelled(scopeDisposed)`.
-- `cancelWhenRouteHidden` → cancels when another route is pushed on top of `ModalRoute.of(context)`, and **does not restart** on return (the user should tap "resend code"). Manual restart: `SmsConsentScope.of(context).restart()`.
-- `enabled` false → true starts a session, true → false cancels it.
+- `cancelWhenRouteHidden` → cancels when another route is pushed on top of `ModalRoute.of(context)`, and **does not restart** on return (the user should tap "resend code"). Manual restart: `SmsConsentScope.of(context).restart()`; the old session's result is not reported. While the route is hidden, the restart waits until it is visible. Dialogs and bottom sheets also hide the route. Popping the scope's own route ends the session with `scopeDisposed`, not `routeHidden`.
+- `enabled` false → true starts a session, true → false cancels it (`CancelReason.manual`).
+- Changes to `senderPhoneNumber`, `extractor`, `timeout` and `options` apply from the next session.
+- `SmsConsentScopeState.session` is the current session, if any.
 - If two scopes are mounted at the same time, the last one mounted wins (`ConflictPolicy.replace`) and the previous one gets `Cancelled(replaced)`.
 
 ## 7. Support check

@@ -59,6 +59,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 - `SmsConsentScope` (route awareness, `restart()`, `enabled`)
 - Widget tests
 - **Acceptance:** Manual tests M-01…M-06 pass.
+- **Status:** Done locally: 99 Dart tests (extractor tables, scope widget tests incl. route covering, offstage mount, restart, enabled, two scopes). The example app has an OTP page with `SmsConsentScope`. Open: manual tests M-01…M-06 on an emulator / device.
 
 ### Phase 4 — Hardening
 - Release / R8 verification

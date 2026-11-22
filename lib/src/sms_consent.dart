@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'options.dart';
+import 'otp_extractor.dart';
 import 'result.dart';
 import 'session.dart';
 import 'transport/transport.dart';
@@ -11,8 +12,8 @@ import 'transport/transport.dart';
 /// final result = await SmsConsent.instance.requestCode(
 ///   timeout: const Duration(minutes: 2),
 /// );
-/// if (result case SmsConsentReceived(:final message)) {
-///   // Extract and verify the code.
+/// if (result case SmsConsentReceived(:final code?)) {
+///   // Verify the code.
 /// }
 /// ```
 ///
@@ -29,6 +30,11 @@ final class SmsConsent {
   }) : _manager = SessionManager(transport, watchdogGrace: watchdogGrace);
 
   static SmsConsent? _instance;
+
+  /// Replaces the shared instance, e.g. with [SmsConsent.withTransport].
+  /// `null` restores the platform one on next access.
+  @visibleForTesting
+  static set instance(SmsConsent? value) => _instance = value;
 
   /// The shared instance. The first access clears native sessions left over
   /// from before a hot restart (EC-06).
@@ -49,17 +55,20 @@ final class SmsConsent {
   ///   for alphanumeric sender IDs such as "MYBANK" (EC-21).
   /// - [timeout]: at most 5 minutes, the Play Services limit (EC-27). Shorter
   ///   values reduce the chance of a late, unrelated consent sheet (EC-01).
+  /// - [extractor]: finds `SmsConsentReceived.code` in the message.
   ///
   /// The session must start **before** the SMS is sent: an SMS that is
   /// already in the inbox is not detected.
   SmsConsentSession start({
     String? senderPhoneNumber,
     Duration timeout = maxSmsConsentTimeout,
+    OtpExtractor extractor = const OtpExtractor.auto(),
     SmsConsentOptions options = const SmsConsentOptions(),
   }) =>
       _manager.start(
         senderPhoneNumber: senderPhoneNumber,
         timeout: timeout,
+        extractor: extractor,
         options: options,
       );
 
@@ -67,11 +76,13 @@ final class SmsConsent {
   Future<SmsConsentResult> requestCode({
     String? senderPhoneNumber,
     Duration timeout = maxSmsConsentTimeout,
+    OtpExtractor extractor = const OtpExtractor.auto(),
     SmsConsentOptions options = const SmsConsentOptions(),
   }) =>
       start(
         senderPhoneNumber: senderPhoneNumber,
         timeout: timeout,
+        extractor: extractor,
         options: options,
       ).result;
 

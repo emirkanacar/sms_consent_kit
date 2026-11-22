@@ -14,11 +14,13 @@ export 'src/options.dart'
         ConflictPolicy,
         DeferUntilResumed,
         SmsConsentOptions;
+export 'src/otp_extractor.dart' show OtpExtractor;
 export 'src/result.dart';
+export 'src/scope.dart' show SmsConsentScope, SmsConsentScopeState;
 export 'src/session.dart'
     show
         SmsConsentEvent,
         SmsConsentSession,
         SmsConsentSessionState,
         maxSmsConsentTimeout;
-export 'src/sms_consent.dart';
+export 'src/sms_consent.dart' show SmsConsent;

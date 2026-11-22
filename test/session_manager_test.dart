@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sms_consent_kit/sms_consent_kit.dart';
 import 'package:sms_consent_kit/src/session.dart';
@@ -136,13 +137,41 @@ void main() {
         async.flushMicrotasks();
         transport.emit(1, EventTypeMessage.received, message: 'Code: 482913');
 
-        expect(
-            resultOf(session, async), const SmsConsentReceived('Code: 482913'));
+        expect(resultOf(session, async),
+            const SmsConsentReceived('Code: 482913', code: '482913'));
         expect(session.state, SmsConsentSessionState.completed);
         expect(manager().activeSession, isNull);
         expect(transport.calls, isNot(contains('cancel:1')),
             reason: 'the native side ended it itself');
       });
+    });
+
+    test('uses the session extractor', () {
+      fake((async) {
+        final session = manager().start(
+          extractor: const OtpExtractor.digits(length: 4),
+        );
+        transport.emit(1, EventTypeMessage.received,
+            message: 'Order 123456, code 7788');
+        expect(resultOf(session, async),
+            const SmsConsentReceived('Order 123456, code 7788', code: '7788'));
+      });
+    });
+
+    test('a throwing extractor costs only the code (EC-28)', () {
+      final reported = <FlutterErrorDetails>[];
+      final previous = FlutterError.onError;
+      FlutterError.onError = reported.add;
+      addTearDown(() => FlutterError.onError = previous);
+
+      fake((async) {
+        final session = manager().start(extractor: const _Throwing());
+        transport.emit(1, EventTypeMessage.received, message: 'secret 482913');
+        expect(resultOf(session, async),
+            const SmsConsentReceived('secret 482913'));
+      });
+      expect(reported, hasLength(1));
+      expect(reported.single.exceptionAsString(), isNot(contains('482913')));
     });
 
     test('received without a message fails', () {
@@ -438,4 +467,11 @@ void main() {
               UnsupportedReason.playServicesUnavailable));
     });
   });
+}
+
+final class _Throwing extends OtpExtractor {
+  const _Throwing();
+
+  @override
+  String? extract(String message) => throw FormatException(message);
 }

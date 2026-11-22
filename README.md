@@ -4,7 +4,7 @@ A session-based, secure and lifecycle-aware Flutter plugin for the Android **SMS
 
 [![CI](https://github.com/emirkanacar/sms_consent_kit/actions/workflows/ci.yml/badge.svg)](https://github.com/emirkanacar/sms_consent_kit/actions/workflows/ci.yml)
 
-> Status: **Phase 2 (Dart core).** `SmsConsent.instance.start()` / `requestCode()` work; code extraction and the widget layer come in phase 3. The design lives in `doc/`; progress follows the phases in `doc/PLAN.md`.
+> Status: **Phase 3 (ergonomics).** The full public API works: `SmsConsent`, `OtpExtractor` and `SmsConsentScope`. Hardening and the first release follow. The design lives in `doc/`; progress follows the phases in `doc/PLAN.md`.
 
 ## Why another package?
 
@@ -19,7 +19,7 @@ Common problems in existing packages:
 
 `sms_consent_kit` addresses each of these at the design level. Full list: [doc/EDGE_CASES.md](doc/EDGE_CASES.md).
 
-## Key features (planned)
+## Key features
 
 - **Session model:** Every listen is an `SmsConsentSession` with a clear start, a timeout and a result that **always completes**.
 - **Widget scope:** `SmsConsentScope` starts listening when the screen opens and cancels when the screen closes or its route is hidden.
@@ -30,7 +30,7 @@ Common problems in existing packages:
 - **Android only:** The package targets Android only. If shared (cross-platform) code calls it on another platform by mistake, it returns `Unsupported(platform)` instead of throwing `MissingPluginException`.
 - **Type-safe bridge:** Dart ↔ Kotlin communication is generated with **Pigeon**; no hand-written, string-based MethodChannel. Each FlutterEngine has its own isolated state.
 
-## At a glance (planned API)
+## At a glance
 
 ```dart
 final result = await SmsConsent.instance.requestCode(

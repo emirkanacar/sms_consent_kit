@@ -46,8 +46,9 @@ class _OtpPageState extends State<OtpPage> {
         ),
         Builder(builder: (context) => TextButton(
           onPressed: () {
-            _resendCode();
+            // Listen first: an SMS that arrives before the restart is missed.
             SmsConsentScope.of(context).restart();
+            _resendCode();
           },
           child: const Text('Resend code'),
         )),

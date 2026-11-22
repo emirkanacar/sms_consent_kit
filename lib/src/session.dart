@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'options.dart';
+import 'otp_extractor.dart';
 import 'result.dart';
 import 'transport/messages.g.dart';
 import 'transport/transport.dart';
@@ -39,11 +40,12 @@ const Duration maxSmsConsentTimeout = Duration(minutes: 5);
 
 /// One listening session, from `start` to its single result.
 final class SmsConsentSession {
-  SmsConsentSession._(this.id, this._manager);
+  SmsConsentSession._(this.id, this._manager, this._extractor);
 
   /// Unique within this isolate.
   final int id;
   final SessionManager _manager;
+  final OtpExtractor _extractor;
 
   final Completer<SmsConsentResult> _result = Completer<SmsConsentResult>();
   final StreamController<SmsConsentEvent> _events =
@@ -141,6 +143,7 @@ final class SessionManager {
   SmsConsentSession start({
     String? senderPhoneNumber,
     Duration timeout = maxSmsConsentTimeout,
+    OtpExtractor extractor = const OtpExtractor.auto(),
     SmsConsentOptions options = const SmsConsentOptions(),
   }) {
     assert(timeout > Duration.zero, 'timeout must be positive.');
@@ -154,7 +157,7 @@ final class SessionManager {
       'sender IDs such as "MYBANK" (EC-21).',
     );
 
-    final session = SmsConsentSession._(_nextId++, this);
+    final session = SmsConsentSession._(_nextId++, this, extractor);
 
     final previous = _active;
     if (previous != null) {
@@ -261,7 +264,8 @@ final class SessionManager {
           message == null
               ? const SmsConsentFailed(SmsConsentError(
                   SmsConsentErrorCode.internal, 'Received without a message.'))
-              : SmsConsentReceived(message),
+              : SmsConsentReceived(message,
+                  code: _extract(session._extractor, message)),
           notifyNative: false,
         );
       case EventTypeMessage.denied:
@@ -296,6 +300,21 @@ final class SessionManager {
     }
   }
 
+  /// Never throws and never reports the message: a failing extractor only
+  /// costs the code (EC-28).
+  static String? _extract(OtpExtractor extractor, String message) {
+    try {
+      final code = extractor.extract(message);
+      return code == null || code.isEmpty ? null : code;
+    } catch (e) {
+      FlutterError.reportError(FlutterErrorDetails(
+        exception: '${extractor.runtimeType}.extract threw ${e.runtimeType}.',
+        library: 'sms_consent_kit',
+      ));
+      return null;
+    }
+  }
+
   Future<void> _cancelNative(int sessionId) async {
     try {
       await _transport.cancel(sessionId);
@@ -325,3 +344,7 @@ final class SessionManager {
 
   static final RegExp _phoneNumber = RegExp(r'^\+?[0-9][0-9 ()\-]{2,19}$');
 }
+
+/// Cancels [session] with [reason]. For the widget layer; not exported.
+Future<void> cancelSession(SmsConsentSession session, CancelReason reason) =>
+    session._manager.cancel(session, reason);

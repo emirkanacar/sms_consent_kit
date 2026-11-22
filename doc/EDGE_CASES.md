@@ -105,7 +105,7 @@ Each entry: **Scenario → Risk → Solution → Test.** The codes (`EC-xx`) are
 - **Solution:** Call `restart()` from the "resend" button; the current session ends with `Cancelled(replaced)`.
 
 ### EC-23 — Several numbers in the message (amount, date, code)
-- **Solution:** `OtpExtractor.auto()` heuristics plus `regex` / `keyword` options; `message` is always returned.
+- **Solution:** `OtpExtractor.auto()` drops amounts, dates, times, phone numbers and numbers next to currencies, then picks the number closest to a keyword; `digits` / `regex` / `keyword` options and custom extractors; `message` is always returned. Non-ASCII digits (Arabic-Indic, Persian, Devanagari, full-width) are supported.
 
 ### EC-24 — The user denies
 - **Solution:** `Denied`; no automatic retry (do not annoy the user). The app falls back to manual entry.
