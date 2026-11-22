@@ -43,7 +43,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 - `ConsentIntentGuard`
 - Robolectric tests
 - **Acceptance:** EC-01, 03, 04, 06, 12, 14, 15 covered by Kotlin tests.
-- **Status:** Done locally: 54 Kotlin tests (engine with fakes and virtual time, Robolectric for receiver/guard), release APK, analyze. Waiting for CI `compat`.
+- **Status:** Done. 54 Kotlin tests (engine with fakes and virtual time, Robolectric for receiver/guard); CI green on all `compat` versions.
 
 ### Phase 2 — Pigeon bridge + Dart core
 - `PigeonTransport` on top of the generated code
@@ -52,6 +52,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 - Unit tests with `FakeTransport`
 - **Real-device verification:** EC-02, EC-17, EC-18
 - **Acceptance:** End-to-end `Received` on an emulator.
+- **Status:** Done locally: 43 Dart tests (`FakeTransport` + `fake_async`, Pigeon channel mocks), 57 Kotlin tests (3 new: cancel overtaking its start), analyze. The example app runs the flow. Open: the emulator end-to-end run and the real-device checks.
 
 ### Phase 3 — Ergonomics
 - `OtpExtractor` (auto, digits, regex, keyword) + table tests

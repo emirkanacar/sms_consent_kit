@@ -181,7 +181,8 @@ onActivityResult(REQUEST_CODE):
 
 - Every FlutterEngine gets its own `SmsConsentPlugin` instance; state (`SmsConsentEngine`) lives on that instance. Pigeon APIs are bound to that engine's messenger, so events only go to the engine that started the session.
 - `onDetachedFromEngine` → the active session is cancelled, the receiver is unregistered, the Pigeon API handlers are set to `null`.
-- When Dart first accesses `SmsConsent.instance`, `reset()` is called → sessions left over from before a hot restart are cleared.
+- When Dart first accesses `SmsConsent.instance`, `reset()` is called → sessions left over from before a hot restart are cleared. The first `start` waits for it.
+- Session ids start at a random value per isolate, so ids from before a hot restart never match new sessions while their events are still in flight.
 - If the `SmsConsentFlutterApi.onEvent` call fails (`channel-error`: nothing listening on the Dart side), the native side terminates the session; no exception escapes.
 
 ## 6. Threading
@@ -190,6 +191,13 @@ onActivityResult(REQUEST_CODE):
 - Pigeon 29 generates Kotlin `suspend fun`s for `@async` HostApi methods and all FlutterApi methods. It runs handlers in `CoroutineScope(Dispatchers.Main)`, which is why `kotlinx-coroutines-android` is a dependency.
 - `SmsConsentFlutterApi.onEvent` is a `suspend fun` called from the main thread. It throws if nothing is listening on the Dart side; the native side catches this and terminates the session (§5).
 - All calls are lightweight (register / cancel); there is no blocking work.
+- **Ordering:** Pigeon dispatches `@async` methods (`checkSupport`, `start`) through a coroutine, which runs later, while sync methods (`cancel`, `reset`) run at once. A `cancel` sent right after its `start` can therefore arrive first. The engine remembers such cancels (at most 8 ids; cleared by `reset`) and the matching `start` then succeeds without listening. The Dart side also repeats the cancel if the session was resolved while its `start` was in flight.
+
+## 6a. Dart core
+
+- `SessionManager` owns the single active session and talks to the native side through `SmsConsentTransport`: `PigeonTransport` on Android, `UnsupportedTransport` elsewhere (every session ends with `Unsupported(platform)`).
+- Dart resolves sessions locally first (cancel, replace, watchdog) and then sends `cancel`; the native side ends them without an event.
+- **Watchdog (EC-26):** each session has a Dart timer for the clamped timeout + 5 s. It fails the session with `Failed(internal)` if no native result arrived. It stops on `consentShown`, like the native timers (EC-25).
 
 ## 7. Package layout (target)
 

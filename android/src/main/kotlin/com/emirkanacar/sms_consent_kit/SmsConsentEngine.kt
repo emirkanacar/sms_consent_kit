@@ -61,6 +61,14 @@ internal class SmsConsentEngine(
     private var session: Session? = null
     private var host: ConsentHost? = null
 
+    /**
+     * Ids cancelled before their `start` ran. Pigeon dispatches `@async` host
+     * calls (start) to a later main-loop turn but runs synchronous ones (cancel)
+     * right away, so a `cancel` sent after `start` can overtake it. Without this
+     * the cancelled session would start listening with nobody waiting (EC-01).
+     */
+    private val cancelledBeforeStart = ArrayDeque<Long>()
+
     /** Visible for tests. */
     internal val activeSessionId: Long? get() = session?.id
 
@@ -76,6 +84,11 @@ internal class SmsConsentEngine(
     fun start(request: StartRequestMessage, callback: (Result<Unit>) -> Unit) {
         // Dart's ConflictPolicy has already decided; end the old one silently.
         session?.let { finish(it, event = null) }
+
+        if (cancelledBeforeStart.remove(request.sessionId)) {
+            callback(Result.success(Unit))
+            return
+        }
 
         val support = consentApi.checkSupport()
         if (support != SupportStatusMessage.SUPPORTED) {
@@ -126,11 +139,22 @@ internal class SmsConsentEngine(
 
     /** Ends the session started by Dart with [sessionId]. No-op for any other id. */
     fun cancel(sessionId: Long) {
-        session?.takeIf { it.id == sessionId }?.let { finish(it, event = null) }
+        val s = session
+        if (s != null && s.id == sessionId) {
+            finish(s, event = null)
+            return
+        }
+        // Possibly a start that has not run yet. Ids are unique per Dart
+        // isolate, so a few remembered ids are enough; stale ones age out.
+        if (sessionId !in cancelledBeforeStart) {
+            cancelledBeforeStart.addLast(sessionId)
+            if (cancelledBeforeStart.size > MAX_REMEMBERED_CANCELS) cancelledBeforeStart.removeFirst()
+        }
     }
 
     /** Ends any session silently (first access / hot restart / engine detach). */
     fun reset() {
+        cancelledBeforeStart.clear()
         session?.let { finish(it, event = null) }
     }
 
@@ -276,6 +300,7 @@ internal class SmsConsentEngine(
     companion object {
         /** Play Services listens for at most 5 minutes. */
         const val MAX_TIMEOUT_MS = 5 * 60 * 1000L
+        const val MAX_REMEMBERED_CANCELS = 8
 
         /** How long to wait for a result after the host Activity is destroyed with the sheet open. */
         const val ORPHAN_TIMEOUT_MS = 60 * 1000L

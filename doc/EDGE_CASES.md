@@ -45,7 +45,7 @@ Each entry: **Scenario → Risk → Solution → Test.** The codes (`EC-xx`) are
 
 ### EC-06 — Hot restart / hot reload
 - **Risk:** Dart state resets while the native receiver stays alive; the old session's event lands in the new isolate.
-- **Solution:** `SmsConsent.instance` calls `reset()` on first access (native sessions are cleared). The Dart side ignores events with an unknown session id. If the `SmsConsentFlutterApi` call fails, the native session is terminated.
+- **Solution:** `SmsConsent.instance` calls `reset()` on first access (native sessions are cleared). The Dart side ignores events with an unknown session id; session ids start at a random value per isolate, so pre-restart ids do not match. If the `SmsConsentFlutterApi` call fails, the native session is terminated.
 
 ### EC-07 — No Activity (background isolate, detached engine in add-to-app)
 - **Solution:** With `cancelOnBackground`, `start` immediately returns `Failed(noActivity)` (and an active session ends with `Cancelled` when the Activity goes away); with `deferUntilResumed`, the sheet stays deferred until an Activity attaches. A call from a background isolate → `Failed(noActivity)`, not `Unsupported(platform)`.
@@ -116,7 +116,7 @@ Each entry: **Scenario → Risk → Solution → Test.** The codes (`EC-xx`) are
 ## D. Dart API robustness
 
 ### EC-26 — The `Future` never completes
-- **Solution:** Every path leads to a terminal result; on the Dart side there is a native timeout + 5 s "watchdog" (`Failed(internal)` if the native event is lost).
+- **Solution:** Every path leads to a terminal result; on the Dart side there is a native timeout + 5 s "watchdog" (`Failed(internal)` if the native event is lost). The watchdog stops when the consent sheet is shown (EC-25), and start errors (including unexpected exceptions) become results instead of being thrown.
 
 ### EC-27 — Timeout longer than 5 minutes
 - **Solution:** The Play Services limit is 5 minutes; the value is clamped, with an assert in debug mode.

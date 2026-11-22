@@ -5,6 +5,20 @@
 /// `SmsConsentUnsupported` instead of throwing.
 ///
 /// Design: `doc/ARCHITECTURE.md`, public API: `doc/API.md`.
-///
-/// Phase 0: skeleton. The public API lands in phases 2–3.
 library;
+
+export 'src/options.dart'
+    show
+        BackgroundPolicy,
+        CancelOnBackground,
+        ConflictPolicy,
+        DeferUntilResumed,
+        SmsConsentOptions;
+export 'src/result.dart';
+export 'src/session.dart'
+    show
+        SmsConsentEvent,
+        SmsConsentSession,
+        SmsConsentSessionState,
+        maxSmsConsentTimeout;
+export 'src/sms_consent.dart';

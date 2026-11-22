@@ -170,6 +170,38 @@ internal class SmsConsentEngineTest {
     }
 
     @Test
+    fun ec01_cancelOvertakingItsStart_neverListens() {
+        // Pigeon runs the sync cancel before the dispatched async start.
+        engine.cancel(5)
+        val result = start(request(id = 5))
+
+        assertTrue(result!!.isSuccess, "Dart already resolved the session")
+        assertEquals(0, receivers.registerCount)
+        assertTrue(api.senders.isEmpty())
+        assertIdle()
+
+        // The id is consumed; it does not affect later sessions.
+        assertTrue(start(request(id = 6))!!.isSuccess)
+        assertEquals(6L, engine.activeSessionId)
+    }
+
+    @Test
+    fun ec01_rememberedCancelsAreBounded() {
+        (1L..SmsConsentEngine.MAX_REMEMBERED_CANCELS + 1L).forEach(engine::cancel)
+
+        start(request(id = 1))
+        assertEquals(1L, engine.activeSessionId, "the oldest remembered id aged out")
+    }
+
+    @Test
+    fun reset_forgetsRememberedCancels() {
+        engine.cancel(5)
+        engine.reset()
+        start(request(id = 5))
+        assertEquals(5L, engine.activeSessionId)
+    }
+
+    @Test
     fun ec22_secondBroadcastWhileSheetOpen_isIgnored() {
         showSheet()
         receivers.deliver(Intent("test.SECOND"))

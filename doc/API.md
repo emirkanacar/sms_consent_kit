@@ -1,6 +1,8 @@
 # Public API design
 
 > Draft. Names may change during implementation; changes are reflected in this document.
+>
+> **Implemented (phase 2):** `SmsConsent`, `SmsConsentSession`, the result types, `SmsConsentOptions`, the support check and the error codes. Marked *phase 3*: `OtpExtractor`, `SmsConsentReceived.code` and `SmsConsentScope`.
 
 ## 1. `SmsConsent`
 
@@ -8,14 +10,15 @@
 final class SmsConsent {
   static SmsConsent get instance;
 
-  /// Whether the device supports the SMS User Consent API.
+  /// Whether the device supports the SMS User Consent API. Never throws:
+  /// if the plugin cannot be reached, reports `playServicesUnavailable`.
   Future<SmsConsentSupport> checkSupport();
 
   /// One-shot shortcut: starts a session and waits for its result.
   Future<SmsConsentResult> requestCode({
     String? senderPhoneNumber,
-    Duration timeout = const Duration(minutes: 5),
-    OtpExtractor extractor = const OtpExtractor.auto(),
+    Duration timeout = maxSmsConsentTimeout,      // 5 minutes
+    OtpExtractor extractor = const OtpExtractor.auto(), // phase 3
     SmsConsentOptions options = const SmsConsentOptions(),
   });
 
@@ -30,6 +33,10 @@ final class SmsConsent {
 }
 ```
 
+- `timeout` must be positive and at most `maxSmsConsentTimeout` (assert in debug; clamped in release, EC-27).
+- `senderPhoneNumber` must be a phone number (assert in debug). Pass `null` for alphanumeric sender IDs such as `MYBANK` (EC-21).
+- A session is completed locally first (cancel, replace, watchdog) and the native side is told afterwards, so `result` completes at once.
+
 ## 2. `SmsConsentSession`
 
 ```dart
@@ -40,7 +47,8 @@ final class SmsConsentSession {
   /// Always completes (never hangs, never throws).
   Future<SmsConsentResult> get result;
 
-  /// Intermediate events (e.g. consent sheet shown / deferred). Optional.
+  /// Intermediate events: consentDeferred, consentShown. Broadcast; closes
+  /// when the session completes. Optional to observe.
   Stream<SmsConsentEvent> get events;
 
   Future<void> cancel();
@@ -56,7 +64,7 @@ sealed class SmsConsentResult { const SmsConsentResult(); }
 
 final class SmsConsentReceived extends SmsConsentResult {
   final String message;   // SMS body
-  final String? code;     // extractor output; null if not found
+  final String? code;     // phase 3: extractor output; null if not found
 }
 final class SmsConsentDenied     extends SmsConsentResult {}
 final class SmsConsentTimedOut   extends SmsConsentResult {}
@@ -71,7 +79,9 @@ final class SmsConsentFailed extends SmsConsentResult {
 }
 ```
 
-`SmsConsentReceived.toString()` **masks** the message content so it is not logged by accident.
+`SmsConsentReceived.toString()` **masks** the message content (`<redacted, N chars>`) so it is not logged by accident. All result types have value equality, and `switch` over `SmsConsentResult` is exhaustive.
+
+Native `cancelled` events map to `CancelReason.backgrounded` (the native side only cancels on its own for the background policy or a lost Activity).
 
 ## 4. `SmsConsentOptions`
 
@@ -161,4 +171,4 @@ final class SmsConsentSupport {
 | `noActivity` | No Activity to show the consent sheet (also: the Activity was destroyed while the sheet was open and no result arrived within 60 s) |
 | `launchFailed` | Launching the consent sheet threw (e.g. `ActivityNotFoundException`) |
 | `sessionAlreadyActive` | Second call while `ConflictPolicy.reject` is set |
-| `internal` | Unexpected native error |
+| `internal` | Unexpected error, including a native result that never arrived (watchdog, EC-26) and unknown native codes |
