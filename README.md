@@ -4,7 +4,7 @@ A session-based, secure and lifecycle-aware Flutter plugin for the Android **SMS
 
 [![CI](https://github.com/emirkanacar/sms_consent_kit/actions/workflows/ci.yml/badge.svg)](https://github.com/emirkanacar/sms_consent_kit/actions/workflows/ci.yml)
 
-> Status: **Phase 3 (ergonomics).** The full public API works: `SmsConsent`, `OtpExtractor` and `SmsConsentScope`. Hardening and the first release follow. The design lives in `doc/`; progress follows the phases in `doc/PLAN.md`.
+> Status: **Phase 4 (hardening).** The full public API works: `SmsConsent`, `OtpExtractor` and `SmsConsentScope`; the release build passes the emulator checks in `tool/e2e.sh`. The first release follows. The design lives in `doc/`; progress follows the phases in `doc/PLAN.md`.
 
 ## Why another package?
 

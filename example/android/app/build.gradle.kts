@@ -47,3 +47,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Debug builds only: reports leaked Activities/receivers (doc/TESTING.md §3).
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+}

@@ -66,6 +66,7 @@ Taken: `sms_consent`, `sms_user_consent`, `otp_consent`.
 - Native resource leak test (1000 cycles + LeakCanary)
 - Device matrix (TESTING.md §4)
 - **Acceptance:** M-01…M-13 done.
+- **Status:** Done locally. Stress tests with 1000 sessions in Kotlin (real receiver registry) and Dart; LeakCanary in the example debug build; `tool/e2e.sh` runs M-01, 02, 03, 04, 05, 09, 10, 12, 13 on the release (R8) build, all passing on an API 35 emulator; M-06 checked by hand (hot restart via `flutter run` + `SIGUSR2`). R8 needs no consumer rules (no reflection; Pigeon uses fixed channel names). This also covers the phase 2 emulator `Received` run and M-01…M-05 of phase 3. Open: M-07 (HMS device), M-08 (sender in contacts), M-11 (split screen), EC-02/17/18 and the device list on real hardware.
 
 ### Phase 5 — Release
 - Full flow in `example/` (with a fake backend)

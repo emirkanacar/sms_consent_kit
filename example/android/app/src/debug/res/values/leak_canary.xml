@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      integration_test puts JUnit and Espresso on the debug classpath, which
+      makes LeakCanary think it runs in a test and turn itself off. Point its
+      test detection at a class that does not exist, so it stays on.
+    -->
+    <string name="leak_canary_test_class_name" translatable="false">com.emirkanacar.sms_consent_kit_example.NotATestClass</string>
+</resources>

@@ -75,6 +75,9 @@ internal class SmsConsentEngine(
     /** Visible for tests. */
     internal val activeState: State? get() = session?.state
 
+    /** Visible for tests: must stay bounded (leak checks). */
+    internal val rememberedCancelCount: Int get() = cancelledBeforeStart.size
+
     fun checkSupport(): SupportStatusMessage = consentApi.checkSupport()
 
     /**
